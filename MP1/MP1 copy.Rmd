@@ -1,0 +1,370 @@
+---
+title: "SDS/CSC 293 Mini-Project 1: Splines"
+author: "Nashshaba Nawaz & Starry Yujia Zhou"
+date: "Wednesday, February 13^th^, 2019"
+output:
+  html_document:
+    highlight: tango
+    theme: cosmo
+    toc: yes
+    toc_depth: 2
+    toc_float:
+      collapsed: true
+    df_print: kable
+---
+
+```{r setup, include=FALSE}
+# Load all your packages here:
+library(tidyverse)
+library(scales)
+
+# Set default behavior for all code chunks here:
+knitr::opts_chunk$set(
+  echo = TRUE, warning = FALSE, message = FALSE,
+  fig.width = 16/2, fig.height = 9/2
+)
+
+# Set seed value of random number generator here. This is in order to get
+# "replicable" randomness, so that any results based on random sampling or
+# resampling are replicable everytime you knit this file. Why use a seed value
+# of 76? For no other reason than:
+# https://www.youtube.com/watch?v=xjJ7FheCkCU
+set.seed(76)
+```
+
+You will be submiting an entry to Kaggle's [House Prices: Advanced Regression Techniques](https://www.kaggle.com/c/house-prices-advanced-regression-techniques/){target="_blank"} by fitting a **spline** model $\hat{f}(x)$ using a single numerical predictor $x$ of your choice. Note that splines are not a great model to use in practice since they only allow you to use one predictor variable at a time, however they are an excellent vehicle for thinking about the ideas behind crossvalidation.
+
+***
+
+# Data
+
+Read in data provided by Kaggle for this competition. They are organized in the `data/` folder of this RStudio project:
+
+```{r}
+training <- read_csv("data/train.csv")
+test <- read_csv("data/test.csv")
+sample_submission <- read_csv("data/sample_submission.csv")
+```
+
+Before performing any model fitting, you should always conduct an **exploratory data analysis** (EDA). This will help guide and inform your model fitting. 
+
+
+## Look at your data!
+
+Always, ALWAYS, **ALWAYS** start by looking at your raw data. This gives you visual sense of what information you have to help build your predictive models. To get a full description of each variable, read the data dictionary in the `data_description.txt` file in the `data/` folder.
+
+Note that the following code chunk has `eval = FALSE` meaning "don't evaluate this chunk with knitting" because `.Rmd` files won't knit if they include a `View()`:
+
+```{r, eval = FALSE}
+View(training)
+glimpse(training)
+
+View(test)
+glimpse(test)
+```
+
+In particular, pay close attention to the variables and variable types in the
+`sample_submission.csv`. Your submission must match this exactly.
+
+```{r}
+glimpse(sample_submission)
+```
+
+
+## Data wrangling
+
+Do any data wrangling/transforming here:
+
+```{r}
+# Selected predictor = 1stFlrSF (First Floor square feet)
+training <- training %>% 
+  select(Id, `1stFlrSF`, SalePrice) %>% 
+  mutate(predictor = `1stFlrSF`, outcome = SalePrice) %>% 
+  filter(predictor < 4000) # remove one outlier with a huge square feet of first floor, because even if that data is real, its difference with the rest of the dataset is too big so it is not meaninful to include it when we predict prices for houses whose 1stFlrSF are smaller than 4000. 
+test <- test %>% 
+  select(Id, `1stFlrSF`) %>% 
+  mutate(predictor = `1stFlrSF`)  
+```
+
+## Visualizations
+
+A univariate exploratory visualization of the *outcome* variable:
+
+```{r}
+ggplot(data = training, mapping = aes(x = predictor)) +
+       geom_histogram()
+```
+
+A univariate exploratory visualization of the *predictor* variable:
+
+```{r}
+ggplot(data = training, mapping = aes(x = predictor)) +
+       geom_histogram()
+```
+
+A multivariate exploratory visualization of the *relationship* between the outcome and predictor variable.
+
+```{r}
+ggplot(training, aes(x = predictor, y = outcome)) + 
+  geom_point()
+```
+
+***
+
+# Explore choices of df (TBD)
+
+This whole section relates to the **due diligence** and the **reaching for the stars** steps of the grading scheme: choosing the degrees of freedom $df$ in a non-arbitrary fashion.
+
+# Make predictions based on chosen df
+
+Set `df_star` to be the degrees of freedom you'll use to make your predictions, arbitrarily chosen or not.
+
+```{r}
+df_star <- 10
+```
+
+## Crossvalidation from scratch
+
+### Step 0: Divide data to 5 folds, and use each fold as the pretend test set once while using the rest as the pretend training set 
+```{r}
+# getting 5 folds
+nrow(training)/5
+
+# create 5 pretend test sets and training sets
+## folds 1 as test, 2-10 as train
+pt1 <- training[1:292,] # 1st fold as pretend test set
+train1 <- training[293:1459, ] # 2-10 fold as training set
+
+## fold 2 as test, 1 & 3-10 as train
+pt2 <- training[293:584,] # 2nd fold as pretend test set
+train2 <- training[c(1:292, 585:1459),] # rest as training set 
+
+## do the same for fold 3, 4, 5 as well
+
+pt3 <- training[585:876, ]
+train3 <- training[c(1:584, 877:1459),]
+
+pt4 <- training[876:1167, ]
+train4 <- training[c(1: 875, 1168:1459),]
+
+pt5 <- training[1168:1459, ]
+train5 <- training[1:1167, ]
+```
+
+### Step 1: Fit spline model to each pretend training data 
+```{r}
+# fold 1 as test, 2-10 as train
+model1 <- smooth.spline(x = train1$predictor, y = train1$outcome, df = df_star)
+
+# fold 2 as test, rest as train; 
+# do this for fold 3, 4, 5 as well
+
+model2 <- smooth.spline(x = train2$predictor, y = train2$outcome, df = df_star)
+
+model3 <- smooth.spline(x = train3$predictor, y = train3$outcome, df = df_star)
+
+model4 <- smooth.spline(x = train4$predictor, y = train4$outcome, df = df_star)
+
+model5 <- smooth.spline(x = train5$predictor, y = train5$outcome, df = df_star)
+```
+
+## Visualize your model on training data
+
+Visualize your fitted splines model $\widehat{f}()$ with degrees of freedom `df_star` on the training data. Recall we can only create this plot for the training data because we only have the outcome variable $y$ for the training data.
+
+```{r}
+# fit each pretend training set a spline model, extract data frame of info based on fitted model, and plot fitted model on each pretend training data 
+
+# model 1 
+model1_points <- model1 %>% 
+  broom::augment()
+
+training_plot1 <- ggplot(train1, aes(x = predictor, y = outcome)) +
+  geom_point()
+
+training_plot1 +
+  geom_line(data = model1_points, aes(x = x, y = .fitted), col = "blue", size = 1)
+
+# same for other models - model 2 
+model2_points <- model2 %>% 
+  broom::augment()
+
+training_plot2 <- ggplot(train2, aes(x = predictor, y = outcome)) +
+  geom_point()
+
+training_plot2 +
+  geom_line(data = model1_points, aes(x = x, y = .fitted), col = "blue", size = 1)
+
+# model 3 
+model3_points <- model3 %>% 
+  broom::augment()
+
+training_plot3 <- ggplot(train3, aes(x = predictor, y = outcome)) +
+  geom_point()
+
+training_plot3 +
+  geom_line(data = model1_points, aes(x = x, y = .fitted), col = "blue", size = 1)
+
+# model 4 
+model4_points <- model4 %>% 
+  broom::augment()
+
+training_plot4 <- ggplot(train4, aes(x = predictor, y = outcome)) +
+  geom_point()
+
+training_plot4 +
+  geom_line(data = model4_points, aes(x = x, y = .fitted), col = "blue", size = 1)
+
+# model 5 
+model5_points <- model5 %>% 
+  broom::augment()
+
+training_plot5 <- ggplot(train5, aes(x = predictor, y = outcome)) +
+  geom_point()
+
+training_plot5 +
+  geom_line(data = model5_points, aes(x = x, y = .fitted), col = "blue", size = 1)
+```
+## Make predictions on test data
+
+Make your predictions/get your predicted values $\widehat{y}$ on the test data. 
+
+### Step 2: Make predictions on test data by applying fitted spline model & plot 
+```{r}
+# model 1
+predicted_points1 <- predict(model1, x = pt1$predictor) %>% 
+  as.tibble()
+
+ggplot()+
+  geom_point(data = pt1, aes(x = predictor, y = outcome)) + 
+  geom_line(data = predicted_points1, aes(x = x, y = y), col = "blue", size = 1)
+
+# model 2
+predicted_points2 <- predict(model2, x = pt2$predictor) %>% 
+  as.tibble()
+
+ggplot()+
+  geom_point(data = pt2, aes(x = predictor, y = outcome)) + 
+  geom_line(data = predicted_points2, aes(x = x, y = y), col = "blue", size = 1)
+
+# model 3
+predicted_points3 <- predict(model3, x = pt3$predictor) %>% 
+  as.tibble()
+
+ggplot()+
+  geom_point(data = pt3, aes(x = predictor, y = outcome)) + 
+  geom_line(data = predicted_points3, aes(x = x, y = y), col = "blue", size = 1)
+
+# model 4
+predicted_points4 <- predict(model4, x = pt4$predictor) %>% 
+  as.tibble()
+
+ggplot()+
+  geom_point(data = pt4, aes(x = predictor, y = outcome)) + 
+  geom_line(data = predicted_points2, aes(x = x, y = y), col = "blue", size = 1)
+
+# model 5
+predicted_points5 <- predict(model5, x = pt5$predictor) %>% 
+  as.tibble()
+
+ggplot()+
+  geom_point(data = pt5, aes(x = predictor, y = outcome)) + 
+  geom_line(data = predicted_points5, aes(x = x, y = y), col = "blue", size = 1)
+```
+
+### Step 3: Calculate RMLSE for each model 
+
+```{r}
+# add predicted values to pretend test set to compare predicted values and actual outcome and calculate RMLSE
+pt1$predicted <- predicted_points1$y
+pt2$predicted <- predicted_points2$y
+pt3$predicted <- predicted_points3$y
+pt4$predicted <- predicted_points4$y
+pt5$predicted <- predicted_points5$y
+
+# mod 1
+pt1 %>% 
+  mutate(lgout = log(outcome+1), 
+         lgprd = log(predicted+1), 
+         lgres = lgout - lgprd,
+         lgres_sqr = lgres^2) %>% 
+  summarize(sle = mean(lgres_sqr)) %>% 
+  mutate(rmlse = sqrt(sle)) # calculate rmlse by formula 
+
+# mod 2
+pt2 %>% 
+  mutate(lgout = log(outcome+1), 
+         lgprd = log(predicted+1), 
+         lgres = lgout - lgprd,
+         lgres_sqr = lgres^2) %>% 
+  summarize(sle = mean(lgres_sqr)) %>% 
+  mutate(rmlse = sqrt(sle)) 
+
+# mod 3
+pt3 %>% 
+  mutate(lgout = log(outcome+1), 
+         lgprd = log(predicted+1), 
+         lgres = lgout - lgprd,
+         lgres_sqr = lgres^2) %>% 
+  summarize(sle = mean(lgres_sqr)) %>% 
+  mutate(rmlse = sqrt(sle)) 
+
+# mod 4
+pt4 %>% 
+  mutate(lgout = log(outcome+1), 
+         lgprd = log(predicted+1), 
+         lgres = lgout - lgprd,
+         lgres_sqr = lgres^2) %>% 
+  summarize(sle = mean(lgres_sqr)) %>% 
+  mutate(rmlse = sqrt(sle)) 
+
+# mod 5
+pt5 %>% 
+  mutate(lgout = log(outcome+1), 
+         lgprd = log(predicted+1), 
+         lgres = lgout - lgprd,
+         lgres_sqr = lgres^2) %>% 
+  summarize(sle = mean(lgres_sqr)) %>% 
+  mutate(rmlse = sqrt(sle)) 
+```
+
+
+
+## Visualization justifying your choice of "optimal" df
+
+This subsection relates to the **point of diminishing returns** step of the grading scheme: a visualization like [Lec01 slides \#36](http://rudeboybert.rbind.io/talk/2019-01-13-Williams.pdf#page=36){target="_blank"} justifying your choice of optimal `df^*`. 
+
+```{r}
+
+```
+
+
+***
+
+# Submission
+
+## Create your submission CSV
+
+The following code creates a submission where the predicted sale price for all houses in the test set is just the average sale price of the training data. Change the code so that you are submitted your spline model fitted predictions. 
+
+```{r}
+submission <- sample_submission %>% 
+  mutate(SalePrice =  mean(training$SalePrice))
+
+write_csv(submission, path = "data/submission.csv")
+```
+
+## Screenshot of your Kaggle score
+
+The "Root Mean Squared Logarithmic Error" score based on my example submission was 0.42918. Replace `score_screenshot.png` with a screenshot of your score. 
+
+![](score_screenshot.png){ width=100% }
+
+
+## Comparing your estimated score to your Kaggle score
+
+This section relates to the **reaching for the stars** step of the grading scheme: showing that your estimated $\widehat{\text{RMLSE}}$ you obtained from your implemented crossvalidation scheme is "close" to the real $\text{RMLSE}$ that Kaggle returns on the leaderboard. 
+
+
+
+

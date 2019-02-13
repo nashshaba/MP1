@@ -13,7 +13,6 @@ output:
       collapsed: true
     df_print: kable
 ---
-try 
 
 ```{r setup, include=FALSE}
 # Load all your packages here:
@@ -98,12 +97,6 @@ ggplot(training, aes(x = predictor, y = outcome)) +
 # Explore choices of df
 
 This whole section relates to the **due diligence** and the **reaching for the stars** steps of the grading scheme: choosing the degrees of freedom $df$ in a non-arbitrary fashion.
-
-# Make predictions based on chosen df
-Set `df_star` to be the degrees of freedom you'll use to make your predictions, arbitrarily chosen or not.
-```{r}
-df_star <- 19
-```
 ## Crossvalidation from scratch
 ### Step 0: Divide data to 5 folds *randomly* , and use each fold as the pretend test set (ptest 1~5) once while using the rest as the pretend training set (ptrain 1~5)
 ```{r}
@@ -131,89 +124,74 @@ ptrain5 <- bind_rows(ptest2, ptest3, ptest4, ptest1)
 ### Step 1: Fit spline model to each pretend training data 
 ```{r}
 # fold 1 as test, 2-10 as train
-model1 <- smooth.spline(x = ptrain1$predictor, y = ptrain1$outcome, df = df_star)
+model1 <- smooth.spline(x = ptrain1$predictor, y = ptrain1$outcome, df = 10)
 # fold 2 as test, rest as train; 
 # do this for fold 3, 4, 5 as well
-model2 <- smooth.spline(x = ptrain2$predictor, y = ptrain2$outcome, df = df_star)
-model3 <- smooth.spline(x = ptrain3$predictor, y = ptrain3$outcome, df = df_star)
-model4 <- smooth.spline(x = ptrain4$predictor, y = ptrain4$outcome, df = df_star)
-model5 <- smooth.spline(x = ptrain5$predictor, y = ptrain5$outcome, df = df_star)
+model2 <- smooth.spline(x = ptrain2$predictor, y = ptrain2$outcome, df = 10)
+model3 <- smooth.spline(x = ptrain3$predictor, y = ptrain3$outcome, df = 10)
+model4 <- smooth.spline(x = ptrain4$predictor, y = ptrain4$outcome, df = 10)
+model5 <- smooth.spline(x = ptrain5$predictor, y = ptrain5$outcome, df = 10)
 ```
 ## Visualizing our model on training data
 Visualize your fitted splines model $\widehat{f}()$ with degrees of freedom `df_star` on the training data. Recall we can only create this plot for the training data because we only have the outcome variable $y$ for the training data.
+```{r}
+model_final <- smooth.spline(x = training$predictor, y = training$outcome, df = 19)
+predicted_points <- predict(model_final, x = test$predictor) %>% 
+  as_tibble()
+
+test$outcome <- predicted_points$y
+
+# fit prediction line to training data 
+ggplot()+
+  geom_point(data = training, aes(x = predictor, y = outcome)) +
+  geom_line(data = predicted_points, aes(x = x, y = y), col = "blue", size = 1)
+```
+
+
+
+## Make predictions on test data
+Make your predictions/get your predicted values $\widehat{y}$ on the test data. 
+
 ```{r}
 # fit each pretend training set a spline model, extract data frame of info based on fitted model, and plot fitted model on each pretend training data 
 # model 1 
 model1_points <- model1 %>% 
   broom::augment()
-training_plot1 <- ggplot(ptest1, aes(x = predictor, y = outcome)) +
-  geom_point()
-training_plot1 +
-  geom_line(data = model1_points, aes(x = x, y = .fitted), col = "blue", size = 1)
+
 # same for other models - model 2 
 model2_points <- model2 %>% 
   broom::augment()
-training_plot2 <- ggplot(ptest2, aes(x = predictor, y = outcome)) +
-  geom_point()
-training_plot2 +
-  geom_line(data = model1_points, aes(x = x, y = .fitted), col = "blue", size = 1)
+
 # model 3 
 model3_points <- model3 %>% 
   broom::augment()
-training_plot3 <- ggplot(ptest3, aes(x = predictor, y = outcome)) +
-  geom_point()
-training_plot3 +
-  geom_line(data = model1_points, aes(x = x, y = .fitted), col = "blue", size = 1)
+
 # model 4 
 model4_points <- model4 %>% 
   broom::augment()
-training_plot4 <- ggplot(ptest4, aes(x = predictor, y = outcome)) +
-  geom_point()
-training_plot4 +
-  geom_line(data = model4_points, aes(x = x, y = .fitted), col = "blue", size = 1)
+
 # model 5 
 model5_points <- model5 %>% 
   broom::augment()
-training_plot5 <- ggplot(ptest5, aes(x = predictor, y = outcome)) +
-  geom_point()
-training_plot5 +
-  geom_line(data = model5_points, aes(x = x, y = .fitted), col = "blue", size = 1)
 ```
-## Make predictions on test data
-Make your predictions/get your predicted values $\widehat{y}$ on the test data. 
 
 ### Step 2: Make predictions on test data by applying fitted spline model & plot 
 ```{r}
 # model 1
 predicted_points1 <- predict(model1, x = ptest1$predictor) %>% 
   as.tibble()
-ggplot()+
-  geom_point(data = ptest1, aes(x = predictor, y = outcome)) + 
-  geom_line(data = predicted_points1, aes(x = x, y = y), col = "blue", size = 1)
 # model 2
 predicted_points2 <- predict(model2, x = ptest2$predictor) %>% 
   as.tibble()
-ggplot()+
-  geom_point(data = ptest2, aes(x = predictor, y = outcome)) + 
-  geom_line(data = predicted_points2, aes(x = x, y = y), col = "blue", size = 1)
 # model 3
 predicted_points3 <- predict(model3, x = ptest3$predictor) %>% 
   as.tibble()
-ggplot()+
-  geom_point(data = ptest3, aes(x = predictor, y = outcome)) + 
-  geom_line(data = predicted_points3, aes(x = x, y = y), col = "blue", size = 1)
 # model 4
 predicted_points4 <- predict(model4, x = ptest4$predictor) %>% 
   as.tibble()
-ggplot()+
-  geom_point(data = ptest4, aes(x = predictor, y = outcome)) + 
-  geom_line(data = predicted_points2, aes(x = x, y = y), col = "blue", size = 1)
 # model 5
 predicted_points5 <- predict(model5, x = ptest5$predictor) %>% 
   as.tibble()
-ggplot()+
-  geom_point(data = ptest5, aes(x = predictor, y = outcome)) + 
-  geom_line(data = predicted_points5, aes(x = x, y = y), col = "blue", size = 1)
 ```
 
 ### Step 3: Calculate RMLSE for each model 
@@ -274,18 +252,6 @@ rmlse <- rbind(e1, e2, e3, e4, e5) %>%
 rmlse
 mean_rmlse <- mean(rmlse$rmlse)
 mean_rmlse
-```
-### Step 4: use optimal DF to make the spline model on actual test set, and visualize it 
-```{r}
-model_final <- smooth.spline(x = training$predictor, y = training$outcome, df = df_star)
-predicted_points <- predict(model_final, x = test$predictor) %>% 
-  as_tibble()
-
-test$outcome <- predicted_points$y
-
-ggplot()+
-  geom_point(data = test, aes(x = predictor, y = outcome)) +
-  geom_line(data = predicted_points, aes(x = x, y = y), col = "blue", size = 1)
 ```
 
 ## Visualization justifying our choice of "optimal" df 
@@ -416,7 +382,14 @@ dat=matrix(nrow=99,ncol=2)
 	  # expand_limits(y=c(0.313, 0.335))
 	op_d
 ```
+As it turns out, the optimal $df=19$. 
 
+### Step 4: use optimal DF to make the spline model on actual test set, and visualize it 
+```{r}
+ggplot()+
+  geom_point(data = test, aes(x = predictor, y = outcome)) +
+  geom_line(data = predicted_points, aes(x = x, y = y), col = "blue", size = 1)
+```
 ***
 
 # Submission 

@@ -70,21 +70,22 @@ training <- training %>%
   filter(`1stFlrSF` < 4000) # remove one outlier with a huge square feet of first floor, because even if that data is real, its difference with the rest of the dataset is too big so it is not meaninful to include it when we predict prices for houses whose 1stFlrSF are smaller than 4000. 
 names(training) <- c("Id", "predictor", "outcome")
 test <- test %>% 
-  select(Id, `1stFlrSF`)
+  select(Id, `1stFlrSF`) %>% 
+  filter(`1stFlrSF` < 3000) # so that the range is consistent with what we can predict from the model 
 names(test) <- c("Id", "predictor")
 ```
 ## Visualizations
-A univariate exploratory visualization of the *outcome* variable:
+A univariate exploratory visualization of the *predictor* variable:
 ```{r}
 ggplot(data = training, mapping = aes(x = predictor)) +
        geom_histogram() + 
-  labs(x = 'Sale Price', y = "count", title = "Visualization of the outcome variable")
+  labs(x = 'Sale Price', y = "count", title = "Visualization of the predictor variable")
 ```
-A univariate exploratory visualization of the *predictor* variable:
+A univariate exploratory visualization of the *outcome* variable:
 ```{r}
 ggplot(data = training, mapping = aes(x = outcome)) +
        geom_histogram() + 
-  labs(x = 'First Floor square feet', y = "count", title = "Visualization of the predictor variable")
+  labs(x = 'First Floor square feet', y = "count", title = "Visualization of the outcome variable")
 ```
 A multivariate exploratory visualization of the *relationship* between the outcome and predictor variable.
 ```{r}
@@ -289,7 +290,7 @@ ggplot()+
 
 ## Visualization justifying your choice of "optimal" df 
 This subsection relates to the **point of diminishing returns** step of the grading scheme: a visualization like [Lec01 slides \#36](http://rudeboybert.rbind.io/talk/2019-01-13-Williams.pdf#page=36){target="_blank"} justifying your choice of optimal `df^*`. 
-```{r}
+```{r warning=FALSE,message=FALSE}
 # Create a new dataset that consists of 2 variables: df and rmlse_hat
 dat=matrix(nrow=99,ncol=2)
 	
@@ -346,40 +347,40 @@ dat=matrix(nrow=99,ncol=2)
 	ptest5$predicted <- predicted_points5$y
 	
 	e1 <- ptest1%>% 
-	  mutate(lgout = log(outcome+1), 
-	         lgprd = log(predicted+1), 
+	  mutate(lgout = log(sqrt((outcome+1)^2)), 
+	         lgprd = log(sqrt((predicted+1)^2)), 
 	         lgres = lgout - lgprd,
 	         lgres_sqr = lgres^2) %>% 
 	  summarize(sle = mean(lgres_sqr)) %>% 
 	  mutate(rmlse = sqrt(sle)) 
 	# mod 2
 	e2 <- ptest2 %>% 
-	  mutate(lgout = log(outcome+1), 
-	         lgprd = log(predicted+1), 
+	  mutate(lgout = log(sqrt((outcome+1)^2)), 
+	         lgprd = log(sqrt((predicted+1)^2)), 
 	         lgres = lgout - lgprd,
 	         lgres_sqr = lgres^2) %>% 
 	  summarize(sle = mean(lgres_sqr)) %>% 
 	  mutate(rmlse = sqrt(sle)) 
 	# mod 3
 	e3 <- ptest3 %>% 
-	  mutate(lgout = log(outcome+1), 
-	         lgprd = log(predicted+1), 
+	  mutate(lgout = log(sqrt((outcome+1)^2)), 
+	         lgprd = log(sqrt((predicted+1)^2)), 
 	         lgres = lgout - lgprd,
 	         lgres_sqr = lgres^2) %>% 
 	  summarize(sle = mean(lgres_sqr)) %>% 
 	  mutate(rmlse = sqrt(sle)) 
 	# mod 4
 	e4 <- ptest4 %>% 
-	  mutate(lgout = log(outcome+1), 
-	         lgprd = log(predicted+1), 
+	  mutate(lgout = log(sqrt((outcome+1)^2)), 
+	         lgprd = log(sqrt((predicted+1)^2)), 
 	         lgres = lgout - lgprd,
 	         lgres_sqr = lgres^2) %>% 
 	  summarize(sle = mean(lgres_sqr)) %>% 
 	  mutate(rmlse = sqrt(sle)) 
 	# mod 5
 	e5 <- ptest5 %>% 
-	  mutate(lgout = log(outcome+1), 
-	         lgprd = log(predicted+1), 
+	  mutate(lgout = log(sqrt((outcome+1)^2)), 
+	         lgprd = log(sqrt((predicted+1)^2)), 
 	         lgres = lgout - lgprd,
 	         lgres_sqr = lgres^2) %>% 
 	  summarize(sle = mean(lgres_sqr)) %>% 
@@ -397,7 +398,7 @@ dat=matrix(nrow=99,ncol=2)
 	# End of for loop
 ```	
 
-```{r{}	
+```{r warning=FALSE,message=FALSE}	
 	dat2 <- dat%>%
 	  filter(rmlse_hat != "NaN") 
 	#Displays the df with lowest rmlse_hat value at top 
@@ -407,10 +408,10 @@ dat=matrix(nrow=99,ncol=2)
 	
 	op_d<-ggplot(dat2,aes(x=df,y=rmlse_hat))+
 	  geom_point()+
-	  scale_y_continuous(limits=c(0.313, 0.335))+
-	  scale_x_continuous(limits=c(0,35),breaks=seq(0,35,5),expand=c(0,0))+
+	  scale_y_continuous(limits=c(0.313, 0.336))+
+	  scale_x_continuous(limits=c(0,100),breaks=seq(0,100,5),expand=c(0,0))+
 	   geom_vline(xintercept=19,linetype = "dashed", colour = "red")+
-	  annotate("segment", x=19,xend=22, y=0.325, yend= 0.325)+
+	  
 	  annotate("text", x= 24, y=0.325, label= "df* = 19", size=5,  fontface="italic")
 	  # expand_limits(y=c(0.313, 0.335))
 	op_d

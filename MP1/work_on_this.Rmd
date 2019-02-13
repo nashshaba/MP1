@@ -4,6 +4,7 @@ author: "Nashshaba Nawaz & Starry Yujia Zhou"
 date: "Wednesday, February 13^th^, 2019"
 output:
   html_document:
+    code_folding: hide
     highlight: tango
     theme: cosmo
     toc: yes
@@ -20,6 +21,7 @@ library(tidyverse)
 library(scales)
 library(dplyr)
 library(tibble)
+
 # Set default behavior for all code chunks here:
 knitr::opts_chunk$set(
   echo = TRUE, warning = FALSE, message = FALSE,
@@ -288,6 +290,7 @@ ggplot()+
 ## Visualization justifying your choice of "optimal" df 
 This subsection relates to the **point of diminishing returns** step of the grading scheme: a visualization like [Lec01 slides \#36](http://rudeboybert.rbind.io/talk/2019-01-13-Williams.pdf#page=36){target="_blank"} justifying your choice of optimal `df^*`. 
 ```{r}
+<<<<<<< HEAD
 df <- c(2,12,17,18,19,20,21,22,32)
 rmsle_hat <- c(0.3187564,0.315039,0.3149522,0.314817,0.3147375,0.3147397,0.3148387,0.315039,0.3327549)
 new_df <- data.frame(df,rmsle_hat)
@@ -300,6 +303,127 @@ plot_df
 #table_df <- as.table(table_df)
 #table_df %>%
 #  arrange(mRMSE)
+=======
+dat=matrix(nrow=99,ncol=2)
+
+dat=data.frame(dat)
+colnames(dat)[1] <- "df"
+for (i in 1:99){
+  df_star<-i
+  dat[i,1]<-df_star
+
+# fold 1 as test, 2-10 as train
+model1 <- smooth.spline(x = ptrain1$predictor, y = ptrain1$outcome, df = df_star)
+# fold 2 as test, rest as train; 
+# do this for fold 3, 4, 5 as well
+model2 <- smooth.spline(x = ptrain2$predictor, y = ptrain2$outcome, df = df_star)
+model3 <- smooth.spline(x = ptrain3$predictor, y = ptrain3$outcome, df = df_star)
+model4 <- smooth.spline(x = ptrain4$predictor, y = ptrain4$outcome, df = df_star)
+model5 <- smooth.spline(x = ptrain5$predictor, y = ptrain5$outcome, df = df_star)
+
+model1_points <- model1 %>% 
+  broom::augment()
+
+model2_points <- model2 %>% 
+  broom::augment()
+
+model3_points <- model3 %>% 
+  broom::augment()
+
+model4_points <- model4 %>% 
+  broom::augment()
+
+model5_points <- model5 %>% 
+  broom::augment()
+
+predicted_points1 <- predict(model1, x = ptest1$predictor) %>% 
+  as.tibble()
+
+predicted_points2 <- predict(model2, x = ptest2$predictor) %>% 
+  as.tibble()
+
+predicted_points3 <- predict(model3, x = ptest3$predictor) %>% 
+  as.tibble()
+
+predicted_points4 <- predict(model4, x = ptest4$predictor) %>% 
+  as.tibble()
+
+predicted_points5 <- predict(model5, x = ptest5$predictor) %>% 
+  as.tibble()
+
+ptest1$predicted <- predicted_points1$y
+ptest2$predicted <- predicted_points2$y
+ptest3$predicted <- predicted_points3$y
+ptest4$predicted <- predicted_points4$y
+ptest5$predicted <- predicted_points5$y
+
+e1 <- ptest1%>% 
+  mutate(lgout = log(outcome+1), 
+         lgprd = log(predicted+1), 
+         lgres = lgout - lgprd,
+         lgres_sqr = lgres^2) %>% 
+  summarize(sle = mean(lgres_sqr)) %>% 
+  mutate(rmlse = sqrt(sle)) 
+# mod 2
+e2 <- ptest2 %>% 
+  mutate(lgout = log(outcome+1), 
+         lgprd = log(predicted+1), 
+         lgres = lgout - lgprd,
+         lgres_sqr = lgres^2) %>% 
+  summarize(sle = mean(lgres_sqr)) %>% 
+  mutate(rmlse = sqrt(sle)) 
+# mod 3
+e3 <- ptest3 %>% 
+  mutate(lgout = log(outcome+1), 
+         lgprd = log(predicted+1), 
+         lgres = lgout - lgprd,
+         lgres_sqr = lgres^2) %>% 
+  summarize(sle = mean(lgres_sqr)) %>% 
+  mutate(rmlse = sqrt(sle)) 
+# mod 4
+e4 <- ptest4 %>% 
+  mutate(lgout = log(outcome+1), 
+         lgprd = log(predicted+1), 
+         lgres = lgout - lgprd,
+         lgres_sqr = lgres^2) %>% 
+  summarize(sle = mean(lgres_sqr)) %>% 
+  mutate(rmlse = sqrt(sle)) 
+# mod 5
+e5 <- ptest5 %>% 
+  mutate(lgout = log(outcome+1), 
+         lgprd = log(predicted+1), 
+         lgres = lgout - lgprd,
+         lgres_sqr = lgres^2) %>% 
+  summarize(sle = mean(lgres_sqr)) %>% 
+  mutate(rmlse = sqrt(sle)) 
+rmlse <- rbind(e1, e2, e3, e4, e5) %>% 
+  mutate(model_number = c(1, 2, 3, 4, 5)) %>% 
+  select(model_number, rmlse)
+rmlse
+mean_rmlse <- mean(rmlse$rmlse)
+mean_rmlse
+
+dat[i,2]<-mean_rmlse
+colnames(dat)[2] <- "rmlse_hat"
+}
+
+dat2 <- dat%>%
+  filter(rmlse_hat != "NaN") 
+
+dat3<-dat2 %>%
+  arrange(rmlse_hat)
+dat3
+
+op_d<-ggplot(dat2,aes(x=df,y=rmlse_hat))+
+  geom_point()+
+  scale_y_continuous(limits=c(0.313, 0.335))+
+  scale_x_continuous(limits=c(0,35),breaks=seq(0,35,5),expand=c(0,0))+
+   geom_vline(xintercept=19,linetype = "dashed", colour = "red")+
+  annotate("segment", x=19,xend=22, y=0.325, yend= 0.325)+
+  annotate("text", x= 24, y=0.325, label= "df* = 19", size=5,  fontface="italic")
+  # expand_limits(y=c(0.313, 0.335))
+op_d
+>>>>>>> aea729b7e0138a03637ba90e378a78a882c9df38
 ```
 ***
 # Submission 

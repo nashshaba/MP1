@@ -139,7 +139,7 @@ model3 <- smooth.spline(x = ptrain3$predictor, y = ptrain3$outcome, df = df_star
 model4 <- smooth.spline(x = ptrain4$predictor, y = ptrain4$outcome, df = df_star)
 model5 <- smooth.spline(x = ptrain5$predictor, y = ptrain5$outcome, df = df_star)
 ```
-## Visualize your model on training data
+## Visualizing our model on training data
 Visualize your fitted splines model $\widehat{f}()$ with degrees of freedom `df_star` on the training data. Recall we can only create this plot for the training data because we only have the outcome variable $y$ for the training data.
 ```{r}
 # fit each pretend training set a spline model, extract data frame of info based on fitted model, and plot fitted model on each pretend training data 
@@ -288,7 +288,7 @@ ggplot()+
   geom_line(data = predicted_points, aes(x = x, y = y), col = "blue", size = 1)
 ```
 
-## Visualization justifying your choice of "optimal" df 
+## Visualization justifying our choice of "optimal" df 
 This subsection relates to the **point of diminishing returns** step of the grading scheme: a visualization like [Lec01 slides \#36](http://rudeboybert.rbind.io/talk/2019-01-13-Williams.pdf#page=36){target="_blank"} justifying your choice of optimal `df^*`. 
 ```{r warning=FALSE,message=FALSE}
 # Create a new dataset that consists of 2 variables: df and rmlse_hat
@@ -421,7 +421,7 @@ dat=matrix(nrow=99,ncol=2)
 
 # Submission 
 
-## Create your submission CSV
+## Our submission CSV
 ```{r}
 submission <- test %>%
   select(Id, outcome)
@@ -430,9 +430,9 @@ names(submission)[2]<-"SalePrice"
 write_csv(submission, path = "data/submission.csv")
 ```
 
-## Screenshot of your Kaggle score
+## Screenshot of our Kaggle score
 ![](score.png){ width=100% }
 
-## Comparing your estimated score to your Kaggle score
+## Comparing our estimated score to our Kaggle score
 
 Our estimated $\widehat{\text{RMLSE}} = .3147375$ with $df\star = 19$. The real $\text{RMLSE} = .32798$ from Kaggle.  The two values are very close. 
